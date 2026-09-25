@@ -1,0 +1,12 @@
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # Serve root directly
+    RewriteCond %{REQUEST_URI} ^/?$ [NC]
+    RewriteRule ^ index.php [L]
+
+    # Pass route via query string (works in subdomain and subdirectory)
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteRule ^(.+)$ index.php?route=$1 [L,QSA]
+</IfModule>

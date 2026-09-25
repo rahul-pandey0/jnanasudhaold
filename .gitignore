@@ -1,0 +1,12 @@
+*.log
+.DS_Store
+node_modules/
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.env
+composer.lock
+public/pdf/invoices/
+application/config/firebase_service_account.json

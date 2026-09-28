@@ -4,6 +4,7 @@ class Notifications_api extends CI_Controller
     public function __construct()
     {
         parent::__construct();
+
         require_once APPPATH . 'helpers/common_helper.php';
         require_once APPPATH . 'helpers/database_helper.php';
         require_once APPPATH . 'helpers/jwt_helper.php';
@@ -88,25 +89,166 @@ class Notifications_api extends CI_Controller
         $user = $res ? $db->get_row($res) : null;
 
         if (!$user || $user['password'] !== md5($password)) {
+            http_response_code(401);
             echo json_encode(array('success' => false, 'message' => 'Invalid credentials'));
             return;
         }
 
         $name  = trim($user['first_name'] . ' ' . $user['last_name']);
-        $token = jwt_encode(array(
+        $payload = array(
             'user_id' => (int)$user['user_id'],
             'role'    => (int)$user['role_id'],
             'phone'   => $user['phone'],
-        ));
+        );
+        $access_token = jwt_encode($payload);
+        $refresh_token = $this->_issue_refresh_token((int)$user['user_id']);
+        if (!$refresh_token) {
+            http_response_code(500);
+            echo json_encode(array('success' => false, 'message' => 'Unable to create login session'));
+            return;
+        }
 
         echo json_encode(array(
-            'success' => true,
-            'token'   => $token,
+            'success'       => true,
+            'token'         => $access_token,
+            'access_token'  => $access_token,
+            'token_type'    => 'Bearer',
+            'expires_in'    => 900,
+            'refresh_token' => $refresh_token,
+            'refresh_expires_in' => 604800,
+            'user_id'       => (int)$user['user_id'],
+            'name'          => $name,
+            'role'          => (int)$user['role_id'],
+            'phone'         => $user['phone'],
+        ));
+    }
+
+    // POST /api/auth/refresh
+    public function refresh()
+    {
+        header('Content-Type: application/json');
+        $body = $this->_input();
+        $refresh_token = trim(isset($body['refresh_token']) ? $body['refresh_token'] : '');
+        if (!$refresh_token) {
+            http_response_code(400);
+            echo json_encode(array('success' => false, 'message' => 'refresh_token required'));
+            return;
+        }
+
+        $db = get_db();
+        $old_hash = hash('sha256', $refresh_token);
+        $res = $db->query(
+            "SELECT user_id FROM mobile_refresh_tokens
+             WHERE token_hash = '" . $db->escape($old_hash) . "'
+               AND expires_at > NOW() AND revoked_at IS NULL
+             LIMIT 1"
+        );
+        $record = $res ? $db->get_row($res) : null;
+        if (!$record) {
+            http_response_code(401);
+            echo json_encode(array('success' => false, 'message' => 'Refresh token expired or invalid; login required'));
+            return;
+        }
+
+        $user_id = (int)$record['user_id'];
+        $new_refresh_token = $this->_make_refresh_token();
+        $new_hash = hash('sha256', $new_refresh_token);
+        $updated = $db->query(
+            "UPDATE mobile_refresh_tokens
+             SET token_hash = '" . $db->escape($new_hash) . "',
+                 expires_at = DATE_ADD(NOW(), INTERVAL 7 DAY),
+                 updated_at = NOW()
+             WHERE token_hash = '" . $db->escape($old_hash) . "'
+               AND expires_at > NOW() AND revoked_at IS NULL"
+        );
+        if (!$updated || $db->affected_rows() !== 1) {
+            http_response_code(401);
+            echo json_encode(array('success' => false, 'message' => 'Refresh token expired or already used; login required'));
+            return;
+        }
+
+        $res = $db->query(
+            "SELECT user_id, phone, role_id FROM user_details
+             WHERE user_id = $user_id AND user_status = 1 LIMIT 1"
+        );
+        $user = $res ? $db->get_row($res) : null;
+        if (!$user) {
+            $db->query(
+                "UPDATE mobile_refresh_tokens SET revoked_at = NOW(), updated_at = NOW()
+                 WHERE token_hash = '" . $db->escape($new_hash) . "'"
+            );
+            http_response_code(401);
+            echo json_encode(array('success' => false, 'message' => 'User is inactive; login required'));
+            return;
+        }
+
+        $access_token = jwt_encode(array(
             'user_id' => (int)$user['user_id'],
-            'name'    => $name,
             'role'    => (int)$user['role_id'],
             'phone'   => $user['phone'],
         ));
+        echo json_encode(array(
+            'success'       => true,
+            'token'         => $access_token,
+            'access_token'  => $access_token,
+            'token_type'    => 'Bearer',
+            'expires_in'    => 900,
+            'refresh_token' => $new_refresh_token,
+            'refresh_expires_in' => 604800,
+        ));
+    }
+
+    // POST /api/auth/logout
+    public function logout()
+    {
+        header('Content-Type: application/json');
+        $body = $this->_input();
+        $refresh_token = trim(isset($body['refresh_token']) ? $body['refresh_token'] : '');
+        if (!$refresh_token) {
+            http_response_code(400);
+            echo json_encode(array('success' => false, 'message' => 'refresh_token required'));
+            return;
+        }
+
+        $db = get_db();
+        $hash = hash('sha256', $refresh_token);
+        $db->query(
+            "UPDATE mobile_refresh_tokens SET revoked_at = NOW(), updated_at = NOW()
+             WHERE token_hash = '" . $db->escape($hash) . "' AND revoked_at IS NULL"
+        );
+        echo json_encode(array('success' => true));
+    }
+
+    private function _make_refresh_token()
+    {
+        if (function_exists('random_bytes')) {
+            try {
+                return bin2hex(random_bytes(32));
+            } catch (Exception $e) {
+                return false;
+            }
+        }
+        if (function_exists('openssl_random_pseudo_bytes')) {
+            $strong = false;
+            $bytes = openssl_random_pseudo_bytes(32, $strong);
+            return ($bytes && $strong) ? bin2hex($bytes) : false;
+        }
+        return false;
+    }
+
+    private function _issue_refresh_token($user_id)
+    {
+        $token = $this->_make_refresh_token();
+        if (!$token) return false;
+
+        $db = get_db();
+        $hash = hash('sha256', $token);
+        $inserted = $db->query(
+            "INSERT INTO mobile_refresh_tokens (user_id, token_hash, expires_at, created_at, updated_at)
+             VALUES (" . (int)$user_id . ", '" . $db->escape($hash) . "',
+                     DATE_ADD(NOW(), INTERVAL 7 DAY), NOW(), NOW())"
+        );
+        return $inserted ? $token : false;
     }
 
     // POST /api/fcm/register

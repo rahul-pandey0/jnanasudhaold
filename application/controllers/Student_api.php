@@ -237,6 +237,57 @@ class Student_api extends CI_Controller
     }
 
     // ---------------------------------------------------------------
+    // GET /api/student/payments
+    // ---------------------------------------------------------------
+    public function payments()
+    {
+        $jwt = $this->_require_jwt();
+        $phone = trim(isset($jwt['phone']) ? $jwt['phone'] : '');
+        if (!$phone) {
+            $this->_json(array('success' => false, 'message' => 'User phone not found'), 404);
+        }
+
+        $db = get_db();
+        $res = $db->query(
+            "SELECT order_no, receipt_no, amount, currency, datetime, status, packageid
+             FROM payment_gateway_status
+             WHERE mobile_no = '" . $db->escape($phone) . "'
+             ORDER BY datetime DESC
+             LIMIT 50"
+        );
+        $rows = $res ? $db->get_result($res) : array();
+        $this->_json(array('success' => true, 'payments' => $rows));
+    }
+
+    // ---------------------------------------------------------------
+    // GET /api/student/payment/:order_no
+    // ---------------------------------------------------------------
+    public function payment($order_no = '')
+    {
+        $jwt = $this->_require_jwt();
+        $phone = trim(isset($jwt['phone']) ? $jwt['phone'] : '');
+        $order_no = trim($order_no);
+        if (!$phone || !$order_no) {
+            $this->_json(array('success' => false, 'message' => 'Payment order number not found'), 404);
+        }
+
+        $db = get_db();
+        $res = $db->query(
+            "SELECT order_no, receipt_no, amount, currency, datetime, status, packageid
+             FROM payment_gateway_status
+             WHERE order_no = '" . $db->escape($order_no) . "'
+               AND mobile_no = '" . $db->escape($phone) . "'
+             LIMIT 1"
+        );
+        $row = $res ? $db->get_row($res) : null;
+        if (!$row) {
+            $this->_json(array('success' => false, 'message' => 'Payment not found'), 404);
+        }
+
+        $this->_json(array('success' => true, 'payment' => $row));
+    }
+
+    // ---------------------------------------------------------------
     // GET /api/student/result/:quiz_id
     // ---------------------------------------------------------------
     public function result($quiz_id = 0)

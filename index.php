@@ -11,6 +11,21 @@ define('BASEPATH', dirname(__FILE__) . '/system/');
 define('APPPATH', dirname(__FILE__) . '/application/');
 define('ENVIRONMENT', isset($_ENV['CI_ENV']) ? $_ENV['CI_ENV'] : 'development');
 
+// Allow requests from the local frontend and handle CORS preflight globally.
+$allowed_origins = array('http://localhost:5178', 'http://localhost:55912');
+$request_origin = isset($_SERVER['HTTP_ORIGIN']) ? $_SERVER['HTTP_ORIGIN'] : '';
+if (in_array($request_origin, $allowed_origins, true)) {
+    header('Access-Control-Allow-Origin: ' . $request_origin);
+    header('Vary: Origin');
+}
+header('Access-Control-Allow-Headers: Content-Type, Authorization');
+header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
+
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    http_response_code(204);
+    exit;
+}
+
 // Define FPDF font path globally if font directory exists
 if (!defined('FPDF_FONTPATH')) {
     $fpdfFontDir = APPPATH . 'third_party/fpdf/font/';

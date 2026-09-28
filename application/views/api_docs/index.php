@@ -113,6 +113,14 @@ pre#response{flex:1;overflow:auto;padding:16px;font-size:12px;font-family:'Casca
       <span class="method GET">GET</span>/api/student/result/{quiz_id}
     </button>
 
+    <div class="sidebar-section">Student — Payments</div>
+    <button class="ep-btn" onclick="load('GET','/api/student/payments',null,true,'Payment History')">
+      <span class="method GET">GET</span>/api/student/payments
+    </button>
+    <button class="ep-btn" onclick="load('GET','/api/student/payment/{order_no}',null,true,'Payment Detail',{order_no:''})">
+      <span class="method GET">GET</span>/api/student/payment/{order_no}
+    </button>
+
     <div class="sidebar-section">Teacher</div>
     <button class="ep-btn" onclick="load('GET','/api/teacher/packages',null,true,'Teacher Packages')">
       <span class="method GET">GET</span>/api/teacher/packages

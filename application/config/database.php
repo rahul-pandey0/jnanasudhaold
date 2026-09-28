@@ -4,10 +4,10 @@
  */
 
 $db['default'] = array(
-    'dsn'      => '',
+    'dsn'      => 'MYSQL',
     'hostname' => 'localhost',
     'username' => 'root',
-    'password' => 'password',
+    'password' => 'Techverve!234',
     'database' => 'newtechv_quizmaster',
     'dbdriver' => 'mysqli',
     'dbprefix' => '',

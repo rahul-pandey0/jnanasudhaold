@@ -26,7 +26,7 @@ function _jwt_b64url_decode($data)
     return base64_decode(strtr($data, '-_', '+/'));
 }
 
-function jwt_encode(array $payload, $ttl_seconds = 86400)
+function jwt_encode(array $payload, $ttl_seconds = 900)
 {
     $payload['iat'] = time();
     $payload['exp'] = time() + $ttl_seconds;

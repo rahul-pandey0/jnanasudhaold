@@ -22,6 +22,8 @@ $route['api/docs'] = 'api_docs/index';
 // FCM / notification API routes
 $route['api/fcm/debug']                = 'notifications_api/fcm_debug';
 $route['api/auth/login']               = 'notifications_api/login';
+$route['api/auth/refresh']              = 'notifications_api/refresh';
+$route['api/auth/logout']               = 'notifications_api/logout';
 $route['api/fcm/register']             = 'notifications_api/register';
 $route['api/fcm/unregister']           = 'notifications_api/unregister';
 $route['api/notifications/(:any)']     = 'notifications_api/inbox/$1';
@@ -79,6 +81,8 @@ $route['api/student/quizzes/(:num)']       = 'student_api/quizzes/$1';
 $route['api/student/results']              = 'student_api/results';
 $route['api/student/result/(:num)']        = 'student_api/result/$1';
 $route['api/student/profile']              = 'student_api/profile';
+$route['api/student/payments']             = 'student_api/payments';
+$route['api/student/payment/(:any)']        = 'student_api/payment/$1';
 
 // Teacher API routes
 $route['api/teacher/packages']             = 'student_api/teacher_packages';

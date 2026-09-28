@@ -184,4 +184,9 @@ class CI_DB {
     {
         return $this->connection ? $this->connection->insert_id : 0;
     }
+
+    public function affected_rows()
+    {
+        return $this->connection ? $this->connection->affected_rows : 0;
+    }
 }

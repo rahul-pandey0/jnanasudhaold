@@ -72,6 +72,9 @@ pre#response{flex:1;overflow:auto;padding:16px;font-size:12px;font-family:'Casca
     <button class="ep-btn" onclick="load('POST','/api/auth/login',{phone:'',password:''},false,'Login')">
       <span class="method POST">POST</span>/api/auth/login
     </button>
+    <button class="ep-btn" onclick="load('POST','/api/auth/refresh',{refresh_token:''},false,'Refresh Access Token')">
+      <span class="method POST">POST</span>/api/auth/refresh
+    </button>
 
     <div class="sidebar-section">FCM</div>
     <button class="ep-btn" onclick="load('POST','/api/fcm/register',{user_id:'',phone:'',device_token:'',platform:'android',app_version:'1.0.0'},true,'Register FCM Token')">
@@ -263,6 +266,11 @@ async function send() {
     try {
       const json = JSON.parse(text);
       if (json.token) document.getElementById('jwtToken').value = json.token;
+      if (json.refresh_token && currentPathTemplate === '/api/auth/refresh' && bodyEl) {
+        const requestBody = JSON.parse(bodyEl.value);
+        requestBody.refresh_token = json.refresh_token;
+        bodyEl.value = JSON.stringify(requestBody, null, 2);
+      }
     } catch(e) {}
 
     showResponse(resp.status, text, ms);
